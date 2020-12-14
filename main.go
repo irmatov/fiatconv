@@ -80,16 +80,14 @@ func loadCache(path string, cutoff int64) *cache.Cache {
 	return cache.Load(f, cutoff)
 }
 
-func saveCache(c *cache.Cache, path string) {
+func saveCache(c *cache.Cache, path string) error {
 	f, err := appFS.Create(path)
 	if err != nil {
-		return
+		return err
 	}
 	defer f.Close()
 
-	if err := c.Save(f); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to save to cache: %v\n", err)
-	}
+	return c.Save(f)
 }
 
 func (app appContext) fiatConv() int {
@@ -124,7 +122,9 @@ func (app appContext) fiatConv() int {
 			return 1
 		}
 		c.Set(k, rate, now.Unix())
-		saveCache(c, app.cachePath)
+		if err := saveCache(c, app.cachePath); err != nil {
+			fmt.Fprintf(app.stderr, "failed to save to cache: %v\n", err)
+		}
 	}
 
 	fmt.Fprintf(app.stdout, "%.2f\n", rate*req.amount)
